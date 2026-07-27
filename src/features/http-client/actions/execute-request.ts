@@ -1,25 +1,8 @@
 'use server';
 
-import { headers } from 'next/headers';
 import { HttpRequest, HttpResponse } from '../types';
 import { checkRateLimit } from '../../../shared/lib/rate-limiter';
-
-async function getClientIp(): Promise<string> {
-  try {
-    const headersList = await headers();
-    const forwardedFor = headersList.get('x-forwarded-for');
-    if (forwardedFor) {
-      return forwardedFor.split(',')[0].trim();
-    }
-    const realIp = headersList.get('x-real-ip');
-    if (realIp) {
-      return realIp.trim();
-    }
-  } catch {
-    // Fallback if headers() fails in non-HTTP contexts (e.g. unit tests)
-  }
-  return '127.0.0.1';
-}
+import { getClientIp } from '../../../shared/utils/get-client-ip';
 
 export async function executeHttpRequest(request: HttpRequest): Promise<HttpResponse> {
   const startTime = performance.now();
