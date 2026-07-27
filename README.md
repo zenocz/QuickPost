@@ -57,7 +57,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to start usi
 ## Roadmap
 
 - [x] Initial Next.js 16 & Tailwind CSS v4 bootstrap
-- [ ] Core TypeScript HTTP data models & type definitions
+- [x] Core TypeScript HTTP data models & type definitions
 - [ ] Server Action proxy handler for cross-origin requests
 - [ ] IP-based Rate Limiter for Server Action proxy protection
 - [ ] Vitest unit tests suite for Server Actions & utilities
