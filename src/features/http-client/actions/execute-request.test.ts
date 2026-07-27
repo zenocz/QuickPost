@@ -1,20 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { executeHttpRequest } from '../execute-request';
-import { HttpRequest } from '../../types';
+import { executeHttpRequest } from './execute-request';
+import { HttpRequest } from '../types';
+import { resetRateLimiter } from '../../../shared/lib/rate-limiter';
 
-// Mock Next.js headers()
+// Mock Next.js headers() to return a consistent test IP address
 vi.mock('next/headers', () => ({
-  headers: async () => new Map(),
+  headers: async () => new Map([['x-forwarded-for', '192.168.1.100']]),
 }));
 
 describe('executeHttpRequest Server Action', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    resetRateLimiter(); // Reset Rate Limiter memory before each test
   });
 
   it('should successfully execute a GET request and return formatted response', async () => {
     const mockResponseText = JSON.stringify({ message: 'Success' });
-    
+
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -111,5 +113,43 @@ describe('executeHttpRequest Server Action', () => {
     expect(response.statusText).toBe('Network Error');
     expect(response.isError).toBe(true);
     expect(response.errorDetails).toContain('Failed to fetch');
+  });
+
+  it('should enforce rate limit and return 429 Too Many Requests on the 31st request', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        status: 200,
+        statusText: 'OK',
+        ok: true,
+        headers: new Map(),
+        text: async () => 'OK',
+      })
+    );
+
+    const mockRequest: HttpRequest = {
+      id: 'req-rate-limit',
+      method: 'GET',
+      url: 'https://api.example.com/ping',
+      queryParams: [],
+      headers: [],
+      auth: { type: 'none' },
+      body: { type: 'none' },
+    };
+
+    // Execute 30 requests - all should succeed
+    for (let i = 0; i < 30; i++) {
+      const res = await executeHttpRequest(mockRequest);
+      expect(res.status).toBe(200);
+    }
+
+    // 31st request from the same IP must fail with 429 Too Many Requests
+    const rateLimitedResponse = await executeHttpRequest(mockRequest);
+
+    expect(rateLimitedResponse.status).toBe(429);
+    expect(rateLimitedResponse.statusText).toBe('Too Many Requests');
+    expect(rateLimitedResponse.isError).toBe(true);
+    expect(rateLimitedResponse.errorDetails).toContain('Rate limit exceeded');
+    expect(rateLimitedResponse.headers['retry-after']).toBe('60');
   });
 });

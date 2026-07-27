@@ -2,29 +2,7 @@
 
 import { headers } from 'next/headers';
 import { HttpRequest, HttpResponse } from '../types';
-
-// Rate Limiter Memory Storage (IP -> timestamps array)
-const rateLimitMap = new Map<string, number[]>();
-
-const WINDOW_MS = 60 * 1000; // 1 minute window
-const MAX_REQUESTS_PER_WINDOW = 30; // Max 30 requests per minute per IP
-
-function isRateLimited(clientIp: string): boolean {
-  const now = Date.now();
-  const timestamps = rateLimitMap.get(clientIp) || [];
-
-  // Filter out timestamps older than WINDOW_MS
-  const validTimestamps = timestamps.filter((time) => now - time < WINDOW_MS);
-
-  if (validTimestamps.length >= MAX_REQUESTS_PER_WINDOW) {
-    rateLimitMap.set(clientIp, validTimestamps);
-    return true;
-  }
-
-  validTimestamps.push(now);
-  rateLimitMap.set(clientIp, validTimestamps);
-  return false;
-}
+import { checkRateLimit } from '../../../shared/lib/rate-limiter';
 
 async function getClientIp(): Promise<string> {
   try {
@@ -46,13 +24,19 @@ async function getClientIp(): Promise<string> {
 export async function executeHttpRequest(request: HttpRequest): Promise<HttpResponse> {
   const startTime = performance.now();
 
-  // 0. Rate Limiting Check
+  // 0. Rate Limiting Check (Upstash Redis in Production or In-Memory with auto-cleanup)
   const clientIp = await getClientIp();
-  if (isRateLimited(clientIp)) {
+  const rateLimitResult = await checkRateLimit(clientIp);
+
+  if (!rateLimitResult.success) {
     return {
       status: 429,
       statusText: 'Too Many Requests',
-      headers: { 'retry-after': '60' },
+      headers: {
+        'retry-after': '60',
+        'x-ratelimit-limit': rateLimitResult.limit.toString(),
+        'x-ratelimit-remaining': rateLimitResult.remaining.toString(),
+      },
       data: '',
       executionTimeMs: 0,
       sizeBytes: 0,
