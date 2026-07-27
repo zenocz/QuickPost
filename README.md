@@ -58,9 +58,9 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to start usi
 
 - [x] Initial Next.js 16 & Tailwind CSS v4 bootstrap
 - [x] Core TypeScript HTTP data models & type definitions
-- [ ] Server Action proxy handler for cross-origin requests
-- [ ] IP-based Rate Limiter for Server Action proxy protection
-- [ ] Vitest unit tests suite for Server Actions & utilities
+- [x] Server Action proxy handler for cross-origin requests
+- [x] IP-based Rate Limiter for Server Action proxy protection
+- [x] Vitest unit tests suite for Server Actions & utilities
 - [ ] Responsive dark mode UI layout (Sidebar, Request Editor, Response Panel)
 - [ ] Request builder with method selector, query params, headers, and body editor
 - [ ] Response viewer with status indicators, execution time metrics, and syntax highlighting
